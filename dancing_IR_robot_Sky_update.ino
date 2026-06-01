@@ -14,13 +14,13 @@ const int trigPin = 10;
 const int echoPin = 13;
 
 //extras pins
-const int buzzerPin = A0;
+const int buzzerPin = 30;
 const int ledPin = 23;
 const int ledPintwo = 24;
 
 //IR avoidance pins
-const int IRleft = 50;
-const int IRright = 51;
+const int leftSensor = 50;
+const int rightSensor = 51;
 
 //IR pin setup
 const int irPin = 53;
@@ -42,9 +42,26 @@ const unsigned long BUTTON_DOWN = 0xAD52FF00; // backward
 const unsigned long BUTTON_LEFT = 0xF708FF00; // left
 const unsigned long BUTTON_5 = 0xBF40FF00; // IR obstcale avoidance 
 
+// 5-channel IR line tracking sensor pins
+const int s1 = A0;  // far left
+const int s2 = A1;  // mid left
+const int s3 = A2;  // center
+const int s4 = A3;  // mid right
+const int s5 = A4;  // far right
+
+// State constants
+const int STATE_CENTER = 0;
+const int STATE_LEFT = 1;
+const int STATE_RIGHT = 2;
+const int STATE_LOST = 3;
+
+int currentState = STATE_CENTER;
+
 #define SPEED 190 //set motor speed
-#define TURN_TIME 800
+#define TURN_TIME 500
 #define STOP_DISTANCE 40
+#define TURN_SPEED 160
+#define LINE_THRESHOLD 500
 
 void setup() {
   pinMode(ENA, OUTPUT); //sets ENA pin to output
@@ -59,6 +76,8 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(ledPintwo, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
+  pinMode(leftSensor,  INPUT);
+  pinMode(rightSensor, INPUT);
 
 
   lcd.begin(16, 2);
@@ -88,6 +107,24 @@ void moveBack(){ //declare forward function
   delay(200);
 }
 
+void backRight(){
+  analogWrite(ENA, TURN_SPEED);
+  analogWrite(ENB, 0);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+void backLeft() {
+  analogWrite(ENA, 0);
+  analogWrite(ENB, TURN_SPEED);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
 void turnRight(){ //declare turn right function 
   analogWrite(ENA, SPEED);
   analogWrite(ENB, SPEED);
@@ -98,16 +135,16 @@ void turnRight(){ //declare turn right function
   digitalWrite(IN4, LOW);
   delay(TURN_TIME); 
 }
-
-void turnRightgent(){ // soft right turn 
-  analogWrite(ENA, SPEED);
-  analogWrite(ENB, SPEED);
   
-  digitalWrite(IN1, ); 
-  digitalWrite(IN2, ); 
-  digitalWrite(IN3, ); 
-  digitalWrite(IN4, ); 
-}
+// void turnRightgent(){ // soft right turn 
+//   analogWrite(ENA, SPEED);
+//   analogWrite(ENB, SPEED);
+  
+//   digitalWrite(IN1, ); 
+//   digitalWrite(IN2, ); 
+//   digitalWrite(IN3, ); 
+//   digitalWrite(IN4, ); 
+// }
 
 void turnLeft(){ // declare turn left funtion
   analogWrite(ENA, SPEED);
@@ -120,15 +157,15 @@ void turnLeft(){ // declare turn left funtion
   delay(TURN_TIME); 
 }
 
-void turnleftgent(){ // soft left turn
-  analogWrite(ENA, SPEED);
-  analogWrite(ENB, SPEED);
+// void turnleftgent(){ // soft left turn
+//   analogWrite(ENA, SPEED);
+//   analogWrite(ENB, SPEED);
   
-  digitalWrite(IN1, ); 
-  digitalWrite(IN2, ); 
-  digitalWrite(IN3, ); 
-  digitalWrite(IN4, ); 
-}
+//   digitalWrite(IN1, ); 
+//   digitalWrite(IN2, ); 
+//   digitalWrite(IN3, ); 
+//   digitalWrite(IN4, ); 
+// }
 
 void moveStop(){ // declare stop function
   digitalWrite(IN1, LOW);
@@ -186,7 +223,7 @@ int checkDistance(){ // fucntion used to measure and check distance
   return distanceCm;
 }
 
-int avoidMode() {
+int avoidMode(){
   int distanceCm = checkDistance(); 
     Serial.begin(9600);
     Serial.print("Distance: ");
@@ -221,8 +258,93 @@ int avoidMode() {
   
 }
 
+int lineFollowmode(){
+    //ir line tracking
+  int r1 = analogRead(s1);
+  int r2 = analogRead(s2);
+  int r3 = analogRead(s3);
+  int r4 = analogRead(s4);
+  int r5 = analogRead(s5);
+
+  if (r3 > LINE_THRESHOLD) {
+    currentState = STATE_CENTER;
+  }
+  else if (r2 > LINE_THRESHOLD || r1 > LINE_THRESHOLD) {
+    currentState = STATE_LEFT;
+  }
+  else if (r4 > LINE_THRESHOLD || r5 > LINE_THRESHOLD) {
+    currentState = STATE_RIGHT;
+  }
+  else {
+    currentState = STATE_LOST;
+  }
+
+  switch (currentState) {
+    case STATE_CENTER:
+      moveForward();
+      break;
+
+    case STATE_LEFT:
+      turnLeft();
+      break;
+
+    case STATE_RIGHT:
+      turnRight();
+      break;
+
+    case STATE_LOST:
+      moveStop();
+      break;
+  }
+}
+
+int IRavoidmode(){
+  int IRLeft  = digitalRead(leftSensor);
+  int IRRight = digitalRead(rightSensor);
+
+      if(IRLeft == LOW  && IRRight == LOW){
+      moveForward();
+    } 
+    else if(IRLeft == HIGH && IRRight == HIGH){
+      moveStop();
+    }
+    else if(IRLeft == LOW  && IRRight == HIGH){
+      backRight();
+    }
+    else if(IRLeft == HIGH && IRRight == LOW){
+      backLeft();
+    }
+  delay(50);
+}
+
+void dancedance(){
+  for (int i = 0; i < 4; i++) { //dance movement
+    moveForward();
+    delay(1000);
+    moveBack();
+    delay(1000);
+    moveStop();
+    turnRight();
+    delay(1500);
+    moveForward();
+    delay(1000);
+    moveBack();
+    delay(1000);
+    moveStop();
+    turnLeft();
+    delay(1500);
+  }
+  turnRight(); //final spin
+  delay(8000);
+  moveStop();
+      
+  lcd.clear();
+  lcd.setCursor(1, 0);
+  lcd.print("   Tadaa!! :D   ");
+  delay(1500);
+}
+
 void loop(){
-  
   //ir receiver buttons
   if (IrReceiver.decode()) {
     unsigned long buttonCode = IrReceiver.decodedIRData.decodedRawData;
@@ -261,52 +383,29 @@ void loop(){
   }
 
   switch (pressMode) { // button function switch
-    case 1: // line following mode 
+    case 1: // line following mode //done
       lcd.clear();
       lcd.setCursor(1, 0);
       lcd.print(" Line Mode  ");
+      lineFollowmode();
       break;
-    case 2: // Ultrasonic obsical avoidance mode)
+    case 2: // Ultrasonic obsical avoidance mode //done
       lcd.clear();
       lcd.setCursor(1, 0);
       lcd.print(" Avoid Mode  ");
       moveStop();
       avoidMode();
       break;
-    case 3:
+    case 3: // dance mode //done
       moveStop();
-      for (int i = 0; i < 4; i++) { //dance movement
-        moveForward();
-        delay(1000);
-        moveBack();
-        delay(1000);
-        moveStop();
-        turnRight();
-        delay(1500);
-        moveForward();
-        delay(1000);
-        moveBack();
-        delay(1000);
-        moveStop();
-        turnLeft();
-        delay(1500);
-      }
-      turnRight(); //final spin
-      delay(8000);
-      moveStop();
-      
-      lcd.clear();
-      lcd.setCursor(1, 0);
-      lcd.print("   Tadaa!! :D   ");
-      delay(1500);
-
+      dancedance();
       break;
-    case 5: // move forward
+    case 5: // move forward //done 
       lcd.clear();
       moveForward();
       break;
     
-    case 6: // move right
+    case 6: // move right 
       lcd.clear();
       turnRight();
       break;
@@ -322,10 +421,11 @@ void loop(){
       break;
     
     case 9: //IR obstcal avoiance 
-
-
-
+      lcd.clear();
+      lcd.setCursor(1, 0);
+      lcd.print(" Avoid Mode: IR  ");
+      moveStop();
+      IRavoidmode();
       break;
-
   }
 }
