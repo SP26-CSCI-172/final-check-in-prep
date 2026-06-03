@@ -1,8 +1,4 @@
-Robo Pioneers
-CSCI 172
-Project Report
-6/2/2026
-                                README Project Report
+                      README Project Report
 The problem we are trying to solve is delivery robots running into obstacles, we want them to
 avoid obstacles and follow a set path that has a cute little face allowing it to do very basic
 communication.Our design process started as an obstacle detection and alert bot. It ended as an obstacle
