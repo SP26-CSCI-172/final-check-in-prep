@@ -9,3 +9,10 @@ of these problems could be altering obstacle detection distance, getting a new p
 newer motors, and simplifying code. Our groups roles were the following; Sky as the Lead Coder and
 contributor to powerpoints, Nia also as a coder, Sam as wiring and construction, Moose also as a coder,
 Elliot also as a main contributor to the powerpoint, and Boston as wiring and construction.
+
+
+List of Sensors:
+  - 8 Channel Line Tracking Sensor
+  - IR remote and reciever
+  - HC-SR04 Ultrasonic Sensor
+  - IR obstacle Sensors (x2)
